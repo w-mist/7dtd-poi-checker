@@ -2,10 +2,20 @@ import sys
 import math
 import xml.etree.ElementTree as ET
 
-# Exclude Lot_Rural_Filler from result or not.
-b_exclude_lot=True
+# Include only Lot_Rural_Filler_06(Wrong Harvester) in result or not.
+# By default, exclude ALL Lot_.* .
+b_include_lot_06=True
 
-def append_loc(f_master, f_prefabs_xml, i_loc_current_x, i_loc_current_y):
+def output_loc(s_deconame: str, s_decopos: list, i_loc_cur_x: int, i_loc_cur_y: int):
+    li = s_decopos.split(',')
+    f_distance_x = int(li[0]) - int(i_loc_cur_x) \
+        if int(li[0]) > int(i_loc_cur_x) else int(i_loc_cur_x) - int(li[0])
+    f_distance_y = int(li[2]) - int(i_loc_cur_y) \
+        if int(li[2]) > int(i_loc_cur_y) else int(i_loc_cur_y) - int(li[2])
+    f_distance = round(math.sqrt(f_distance_x * f_distance_x + f_distance_y * f_distance_y))
+    print(f"{s_deconame}\t{li[0]}\t{li[1]}\t{li[2]}\t{f_distance}")
+
+def select_poi(f_master, f_prefabs_xml, i_loc_cur_x, i_loc_cur_y):
     with open(f_master, 'r') as file:
         set_master = set(file.read().splitlines())
     xml_tree = ET.parse(f_prefabs_xml)
@@ -16,18 +26,20 @@ def append_loc(f_master, f_prefabs_xml, i_loc_current_x, i_loc_current_y):
     print("POI_NAME\tE(+)/W(-)\tElev\tN(+)/S(-)\tDistance")
     for elem in l_deco:
         s_deconame = elem.get('name')
-        if s_deconame in set_master:
-            if b_exclude_lot and 'lot_' in s_deconame:
-                continue
-            s_decopos = elem.get('position')
-            li = s_decopos.split(',')
-            i_c += 1
-            f_distance_x = int(li[0]) - int(i_loc_current_x) if int(li[0]) > int(i_loc_current_x) else int(i_loc_current_x) - int(li[0])
-            f_distance_y = int(li[2]) - int(i_loc_current_y) if int(li[2]) > int(i_loc_current_y) else int(i_loc_current_y) - int(li[2])
-            f_distance = round(math.sqrt(f_distance_x * f_distance_x + f_distance_y * f_distance_y))
-            print(f"{s_deconame}\t{li[0]}\t{li[1]}\t{li[2]}\t{f_distance}")
+        s_decopos = elem.get('position')
+        if b_include_lot_06:
+            if s_deconame == 'lot_rural_filler_06':
+                output_loc(s_deconame, s_decopos, i_loc_cur_x, i_loc_cur_y)
+                i_c += 1
+            if not 'lot_' in s_deconame and s_deconame in set_master:
+                output_loc(s_deconame, s_decopos, i_loc_cur_x, i_loc_cur_y)
+                i_c += 1
+        else:
+            if not 'lot_' in s_deconame and s_deconame in set_master:
+                output_loc(s_deconame, s_decopos, i_loc_cur_x, i_loc_cur_y)
+                i_c += 1
     print(f"found: {i_c} POIs")
-    print(f"current_pos: E/W {i_loc_current_x} N/S {i_loc_current_y}")
+    print(f"current_pos: E/W {i_loc_cur_x} N/S {i_loc_cur_y}")
     return 0
 
 def main():
@@ -41,10 +53,9 @@ def main():
 
     f_master = sys.argv[1]
     f_prefabs_xml = sys.argv[2]
-    i_loc_current_x = sys.argv[3]
-    i_loc_current_y = sys.argv[4]
-
-    append_loc(f_master, f_prefabs_xml, i_loc_current_x, i_loc_current_y)
+    i_loc_cur_x = sys.argv[3]
+    i_loc_cur_y = sys.argv[4]
+    select_poi(f_master, f_prefabs_xml, i_loc_cur_x, i_loc_cur_y)
 
 if __name__ == '__main__':
     main()
